@@ -1,0 +1,504 @@
+---
+title: "ESM 204 HW 4"
+author: "Peter Omasta, Jennifer Truong, and Veronica Weber"
+date: "5/20/2020"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = TRUE,
+                      warning = FALSE)
+# Attach packages
+library(tidyverse)
+library(janitor)
+library(kableExtra)
+```
+
+# **Building a Climate-Economy Model to Account For Risk and Uncertainty and Applying Sensitivity Analysis.**
+
+### Task 1 - Plots
+
+In order to assess economic risk and uncertainty with climate change, we needed to build a model. The first step was to create a function to factor temperature with no climate change and two "business as usual" scenarios in which temperatures reach 2 degrees Celcius (moderate climate change) and 8 degrees Celcius (extreme climate change). We used the following equation:
+
+- Business as Usual (BAU) Temperature: $$\tau(t) = min(\tau(t)/100, T)$$
+
+```{r BAU Function, echo = FALSE}
+
+# Function for finding temperature under BAU 
+bau_temp = function(t, T){
+  tau = min((T*t)/100, T)
+  return(tau)
+}
+```
+
+Next, we ran this model factoring in these three scenarios from years 0 - 200. We then placed all 3 scenario calculations into a dataframe and plotted the results.
+
+```{r inputs, echo = FALSE}
+# Create a vector for time t
+year = c(0:200)
+```
+
+```{r Finding Temperature Over Time, echo = FALSE}
+# Find BAU temp under T = 0
+temp_t_0 = lapply(year, bau_temp, T = 0)
+# Find BAU temp under T = 2
+temp_t_2 = lapply(year, bau_temp, T = 2)
+# Find BAU temp under T = 8
+temp_t_8 = lapply(year, bau_temp, T = 8)
+```
+
+
+```{r Dataframe - Temperature Over Time, echo = FALSE}
+# Create data frame
+temperature_df = tibble(year, temp_t_0, temp_t_2, temp_t_8) %>% 
+  rename("no_cc" = "temp_t_0",
+         "moderate_cc" = "temp_t_2",
+         "extreme_cc" = "temp_t_8") 
+temperature_df$no_cc = as.numeric(temperature_df$no_cc)
+temperature_df$moderate_cc = as.numeric(temperature_df$moderate_cc)
+temperature_df$extreme_cc = as.numeric(temperature_df$extreme_cc)
+```
+
+### **A) Plotting Temperature Over Time**
+
+- no climate change (T = 0)
+- moderate climate change (T = 2)
+- extreme climate change (T = 8)
+
+```{r Plot - Temperature Over Time, echo = FALSE, fig.width = 12, fig.height = 8}
+
+ggplot(data = temperature_df, aes(x=year)) +
+  geom_point(aes(y=no_cc, color = "No CC")) +
+  geom_point(aes(y=moderate_cc, color = "Moderate CC")) +
+  geom_point(aes(y=extreme_cc, color = "Extreme CC")) +
+  theme_minimal() +
+  labs(y = "Temperature Change (Celcius)",
+       x = "Year",
+       colour = "Climate Scenario",
+       title = "Temperature Under Different Climate Scenarios")
+
+
+```
+
+Next, we wanted to plot how economic consumption is affected over time with each of the three climate change scenarios. To do so, we created a function to factor the amount of economic activity retained as well as consumption using the following equations: 
+
+- Economic Activity Retained: $$K(t) = exp(-\beta*\tau(t)^2)$$
+- Consumption: $$C(t) = K(t)exp(gt)$$
+
+and used the following parameters:
+
+ - $\beta$ = .05.
+- g = .01
+
+```{r Economic Activity Function, echo = FALSE}
+# Function for fraction of economic activity that is retained ----
+econ_activity_retained = function(beta, tau){
+  k_t = exp(-beta*tau^2)
+  return(k_t)
+}
+```
+
+```{r Consumption Function, echo = FALSE}
+# Function for total consumption at time t ----
+consumption = function(t, k_t, g){
+  c_t = k_t*exp(g * t)
+  return(c_t)
+}
+```
+
+
+```{r Finding economic activity over time, echo = FALSE}
+# Find  economic activity under T = 0
+er_t_0 <-  econ_activity_retained(beta = 0.05, tau = temperature_df$no_cc)
+# Find  economic activity under T = 2
+er_t_2 <-  econ_activity_retained(beta = 0.05, tau = temperature_df$moderate_cc)
+# Find  economic activity under T = 8
+er_t_8 <-  econ_activity_retained(beta = 0.05, tau = temperature_df$extreme_cc)
+```
+
+
+```{r Data Frame - Economic Activity, echo = FALSE}
+# Put everything into a data frame to plot
+er_df <- data.frame(year, er_t_0, er_t_2, er_t_8) %>% 
+    rename("no_cc" = "er_t_0",
+         "moderate_cc" = "er_t_2",
+         "extreme_cc" = "er_t_8")
+```
+
+
+```{r Find Consumption Over Time, echo = FALSE}
+# Find consumption under T = 0
+consumption_t_0 <-  consumption(t = year, g = 0.01, k_t = er_df$no_cc)
+# Find consumption under T = 2
+consumption_t_2 <-  consumption(t = year, g = 0.01, k_t = er_df$moderate_cc)
+# Find consumption under T = 8
+consumption_t_8 <-  consumption(t = year, g = 0.01, k_t = er_df$extreme_cc)
+```
+
+
+```{r Data Frame - Consumption, echo = FALSE}
+consumption_df <- data.frame(year, consumption_t_0, consumption_t_2, consumption_t_8) %>% 
+    rename("no_cc" = "consumption_t_0",
+         "moderate_cc" = "consumption_t_2",
+         "extreme_cc" = "consumption_t_8")
+```
+
+### **B) Plotting Economic Consumption Over Time**
+
+- no climate change (T = 0)
+- moderate climate change (T = 2) 
+- extreme climate change (T = 8)
+
+```{r Plot - Consumption Over Time, echo = FALSE, fig.width = 12, fig.height = 8 }
+ggplot(data = consumption_df, aes(x=year)) +
+  geom_point(aes(y=no_cc, color = "No CC")) +
+  geom_point(aes(y=moderate_cc, color = "Moderate CC")) +
+  geom_point(aes(y=extreme_cc, color = "Extreme CC")) +
+  theme_minimal() +
+  labs(y = "Consumption",
+       x = "Year",
+       colour = "Climate Scenario",
+       title = "Consumption Under Different Climate Scenarios")
+```
+
+The other element we wanted to study was how undiscounted utility would change over time in the three climate change scenarios. To explore undiscounted utility we used the following equation: 
+
+- For Society's Utility From Consumption: $$U(C) = C^{1-\eta}/(1-\eta)$$
+
+and used the following parameter: $\eta$ = .5
+
+```{r Society Utility Function, echo = FALSE}
+# Function for society's utility ---
+society_utility = function(c_t, eta){
+  u_c = (c_t^(1-eta))/(1-eta)
+  return(u_c)
+}
+```
+
+
+```{r Find Undiscounted Utility, echo = FALSE}
+# Find Undiscounted utility  under T = 0
+utility_t_0 <-  society_utility(eta = 0.5, c_t = consumption_df$no_cc)
+# Find Undiscounted utility  under T = 2
+utility_t_2 <-  society_utility(eta = 0.5, c_t = consumption_df$moderate_cc)
+# Find Undiscounted utility  under T = 8
+utility_t_8 <-  society_utility(eta = 0.5, c_t = consumption_df$extreme_cc)
+
+
+```
+
+```{r Data Frame - Utility, echo = FALSE}
+# Create data frame
+utility_df <- data.frame(year, utility_t_0, utility_t_2, utility_t_8) %>% 
+    rename("no_cc" = "utility_t_0",
+         "moderate_cc" = "utility_t_2",
+         "extreme_cc" = "utility_t_8")
+```
+
+### **C) Plotting Undiscounted Utility Over Time**
+```{r Plot Utility, echo = FALSE, fig.width= 12, fig.height = 8}
+ggplot(data = utility_df, aes(x=year)) +
+  geom_point(aes(y=no_cc, color = "No CC")) +
+  geom_point(aes(y=moderate_cc, color = "Moderate CC")) +
+  geom_point(aes(y=extreme_cc, color = "Extreme CC")) +
+  theme_minimal() +
+  labs(y = "Utility",
+       x = "Year",
+       colour = "Climate Scenario",
+       title = "Utility Under Different Climate Scenarios")
+```
+
+### Task 2 -  Analysis
+
+#### a) Calculating Present Value Utility with T = 4.4 and Percentage Loss
+
+One thing we wanted to analyze was how consumers' economic utility might change in different climate change scenarios. Suppose we knew for sure that under a BAU scenario, temperatures could reach an increase of 4.4 degrees Celcius. For this, we calculated the present value, (i.e. the discounted utility) over the next 200 years. We created a function to determine our discount rate using the Ramsey Rule equation: 
+- r =  $$\delta + \eta*g$$
+
+Then to find present value we used the following equation: 
+
+- Present Value Formula: $$v_0 = v_t/(1+r)^t$$
+
+and we applied the following parameters for this model: 
+
+ - $\delta$ = .005
+ - $\eta$ = .5
+ - g = .01
+ - $\beta$ = .05.
+ 
+
+
+```{r Discount Rate Function, echo = FALSE}
+# Function for discount rate ----
+# Discount rate - Ramsey rule
+discount_rate = function(delta, eta, g){
+  r = delta + eta*g
+  return(r)
+  }
+```
+
+
+```{r, echo = FALSE}
+# Set up function for present value formula ----
+# Present value formula = v_0 = v_t/((1+r)^t)
+present_value = function(v_t, r, t){
+  v_0 = v_t/((1+r)^t)
+  return(v_0)
+}
+```
+
+
+```{r Find Temp With New BAU, echo = FALSE}
+# Find BAU temp under T = 4.4 ----
+temp_t_44 <-  lapply(year, bau_temp, T = 4.4)
+```
+
+```{r Data Frame New BAU Temp, echo = FALSE}
+# Turn list into data frame
+temp_t_44_df <- tibble(year, temp_t_44) %>% 
+  rename("bau_t_cc" = "temp_t_44")
+temp_t_44_df$bau_t_cc = as.numeric(temp_t_44_df$bau_t_cc)
+```
+
+```{r Find Consumption and Utility at New BAU Temp, echo = FALSE}
+# Find consumption under T = 4.4 ---
+er_t_44 <-  econ_activity_retained(beta = 0.05, tau = temp_t_44_df$bau_t_cc)
+consumption_t_44 <-  consumption(t = year, g = 0.01, k_t = er_t_44)
+
+# Find undiscounted utility under T = 4.4
+utility_t_44 <-  society_utility(eta = 0.5, c_t = consumption_t_44)
+
+```
+
+```{r Find Discount Rate, echo = FALSE}
+# Find discount rate ---
+discount_rate_cc = discount_rate(delta = .005, eta = .5, g = .01)
+```
+
+
+```{r Find Present Value Utility, echo = FALSE}
+# Find present value utility with climate change ----
+# Use T = 4.4
+present_value_utility_cc = present_value(v_t = utility_t_44, r = discount_rate_cc, t = year)
+
+# Find present value utility without climate change ----
+present_value_utility_no_cc = present_value(v_t = utility_t_0, r = discount_rate_cc, t = year)
+```
+
+```{r Data Frame - Present Value Utility, echo = FALSE}
+# Create data frame to find percentage loss ----
+present_value_utility_df <- data.frame(year, present_value_utility_cc, present_value_utility_no_cc) %>% 
+  rename("pv_no_cc" = "present_value_utility_no_cc",
+         "pv_cc" = "present_value_utility_cc") %>% 
+  mutate(
+    pct_loss = (pv_no_cc - pv_cc)/pv_no_cc*100
+  )
+
+```
+
+As our model shows, by year 200, present value reduces from  \$`r round(present_value_utility_df$pv_cc[1], 2)` to \$`r round(present_value_utility_df$pv_cc[201], 2)` with climate change, and reduces from  \$`r round(present_value_utility_df$pv_no_cc[1], 2)` to \$`r round(present_value_utility_df$pv_no_cc[201], 2)` without climate change. The total percentage loss in present value utility by year 200 is `r round( present_value_utility_df$pct_loss[101], 2)`%.
+
+```{r results = "asis", fig.width= 12, echo = FALSE}
+# # Create table
+# pv_utility_table <- kable(present_value_utility_df,
+#                           format = "html",
+#                          digits = 2,
+#                          col.names = c("Year", "Present Value With Climate Change (dollars)", "Present Value Without Climate Change (dollars)", "Present Value Utility Percentage Loss (percent)")) %>% 
+#   kable_styling(latex_options = c("striped", "condensed"),
+#                 fixed_thead = T,
+#                 full_width = T,
+#                 ) 
+# 
+# pv_utility_table
+# 
+#                
+
+```
+
+```{r Changing parameters for sensitivy analysis, echo = FALSE}
+t_increase = 4.4 + 4.4*.10
+eta_increase = .5 + .5*.10
+g_increase = .01 + .01*.10
+beta_increase = .05 + .05*.10
+```
+
+### b) Sensitivity Analysis of Present Value Utility Percentage Loss
+Next we wanted to test how utility may be sensitive to a number of variables in this climate change model. To test the sensitivity of values of present value utility percentage loss (L), we considered variables: temperature (T), g, $\eta$ and $\beta$ and then calculated the percent change in L that arises from a 10% increase in each:
+
+ - T = 4.4 -> `r t_increase`
+ - $\eta$ = .5 -> `r eta_increase`
+ - g = .01 -> `r g_increase`
+ - $\beta$ = .05 -> `r beta_increase`
+ 
+We did four separate analyses for each variable, increasing one by 10% while keeping the other variables the same. As can be shown in the table, **a change in temperature (T) has the most impact on present value utility percentage loss (L)**. We found the following results: 
+
+ - By year 200, a 10% increase in T causes a 5.96% increase in L. (Original L value is 38.37, after T is 44.33)
+ - A 10% increase in $\beta$ causes a 2.91% increase in L. (Original L value is 38.37, after T is 41.28)
+ - L does not change with a 10% increase of either $\eta$ or g. (Original L value of 38.37 remained the same)
+
+```{r Sensitivity Analysis of L with increased T, echo = FALSE}
+# Redo analysis ----
+# Find BAU temp under T = 4.4
+temp_t_44_inc <-  lapply(year, bau_temp, T = t_increase)
+# Turn list into data frame
+temp_t_44_inc_df <- tibble(year, temp_t_44_inc) %>% 
+  rename("bau_t_cc" = "temp_t_44_inc")
+temp_t_44_inc_df$bau_t_cc = as.numeric(temp_t_44_inc_df$bau_t_cc)
+# Find consumption under T = 4.4
+er_t_44_inc <-  econ_activity_retained(beta = 0.05, tau = temp_t_44_inc_df$bau_t_cc)
+consumption_t_44_inc <-  consumption(t = year, g = 0.01, k_t = er_t_44_inc)
+# Find undiscounted utility under T = 4.4
+utility_t_44_inc <-  society_utility(eta = 0.5, c_t = consumption_t_44_inc)
+# Find present value utility ---
+pv_cc_inc = present_value(v_t = utility_t_44_inc, r = discount_rate_cc, t = year)
+# Calculate percentage loss
+pct_loss_inc = (present_value_utility_df$pv_no_cc - pv_cc_inc)/present_value_utility_df$pv_no_cc*100
+```
+
+```{r Sensitivity Analysis of L with increased eta, echo = FALSE}
+# Calculate new discount rate ---
+discount_rate_eta_inc = discount_rate(delta = .005, eta = eta_increase, g = .01)
+# Re-do analysis ----
+# Find present value utility with climate change ----
+pv_utility_cc_eta = present_value(v_t = utility_t_44, r = discount_rate_eta_inc, t = year)
+# Find present value utility without climate change ----
+pv_utility_no_cc_eta = present_value(v_t = utility_t_0, r = discount_rate_eta_inc, t = year)
+# Find percentage loss ----
+pct_loss_eta_inc = (pv_utility_no_cc_eta - pv_utility_cc_eta)/pv_utility_no_cc_eta *100
+```
+
+```{r Sensitivity Analysis of L with increased g, echo = FALSE}
+# Calculate new discount rate ---
+discount_rate_g_inc = discount_rate(delta = .005, eta = .5, g = g_increase)
+# Re-do analysis ----
+# Find present value utility with climate change ----
+pv_utility_cc_g = present_value(v_t = utility_t_44, r = discount_rate_g_inc, t = year)
+# Find present value utility without climate change ----
+pv_utility_no_cc_g = present_value(v_t = utility_t_0, r = discount_rate_g_inc, t = year)
+# Find percentage loss ----
+pct_loss_g_inc = (pv_utility_no_cc_g - pv_utility_cc_g)/pv_utility_no_cc_g*100
+```
+
+
+```{r Sensitivity Analysis of L with increased beta, echo = FALSE}
+# Re-do analysis ----
+# Find new consumption ---
+er_beta_inc <-  econ_activity_retained(beta = beta_increase, tau = temp_t_44_df$bau_t_cc)
+consumption_beta_inc <-  consumption(t = year, g = 0.01, k_t = er_beta_inc)
+# Find undiscounted utility
+utility_beta_inc <-  society_utility(eta = 0.5, c_t = consumption_beta_inc)
+# Find present value utility with climate change ----
+pv_utility_cc_beta = present_value(v_t = utility_beta_inc, r = discount_rate_cc, t = year)
+# Find present value utility without climate change ----
+# Might need to recalculate utility for no climate change with the new beta too!
+er_t_0_new_beta <-  econ_activity_retained(beta = beta_increase, tau = temperature_df$no_cc)
+consumption_t_0_nb <-  consumption(t = year, g = 0.01, k_t = er_t_0_new_beta)
+utility_t_0_new_beta = society_utility(eta = 0.5, c_t = consumption_t_0_nb)
+pv_utility_no_cc_beta = present_value(v_t = utility_t_0_new_beta, r = discount_rate_cc, t = year)
+# Find percentage loss ----
+pct_loss_beta_inc = (pv_utility_no_cc_beta - pv_utility_cc_beta)/pv_utility_no_cc_beta*100
+```
+
+```{r Data frame of Changes in L, echo = FALSE}
+# Create data frame
+sensitivity_analysis_df = tibble(year, present_value_utility_df$pct_loss, pct_loss_inc, pct_loss_eta_inc, pct_loss_g_inc, pct_loss_beta_inc)
+# Sensitivity analysis table
+
+# sensitivity_analysis_table = kable(sensitivity_analysis_df,
+#                          format = "html",
+#                          digits = 2,
+#                          col.names = c("Year", "Original L", "New L with increased T", "New L with increased eta", "New L with increased g", "New L with increased beta")) %>%
+#   kable_styling(latex_options = c("striped", "condensed"),
+#                 fixed_thead = T,
+#                 full_width = T)
+# sensitivity_analysis_table
+```
+
+### c) Finding The Highest Threshold of Consumption Reduction Society Is Willing to Endure Without Climate Change
+
+The next element we considered was if we could completely prevent climate change from occurring so that temperature (T) = 0. However this would mean that economic consumption would be lessened by a fraction of $\theta$ for the next 200 years. We would need to find the maximum value of $\theta$ that society would be willing to endure, which we called $\theta$*
+
+
+To do this we factored how present value utility is affected by the two climate scenarios of no climate change, when T = 0 and a BAU scenario when T = 4.4.
+
+- No climate change but 10% reduction in consumption: $PVU(T = 0, 10\%)$
+- Climate change but no reduction in consumption: $PVU(T = 4.4, 0\%)$
+
+We then used the following formula: 
+$$C(t) = K(t)exp(gt)*(1-\theta)$$
+To calculate $\theta$* we set the present value utility at T = 0 equal to present value utility at T = 4.4:
+
+$PVU(T = 0, 10\%)$ equal to $PVU(T = 4.4, 0\%)$
+
+```{r Calculating Theta, echo = FALSE}
+# Use consumption_t_44 and consumption_df$no_cc
+# Find present value for no climate change ---
+# theta = .10 b/c 10% decrease in consumption
+change_consumption_no_cc = 1 - .10
+# Find new utility
+utility_no_cc_theta <-  society_utility(eta = 0.5, c_t = consumption_df$no_cc*change_consumption_no_cc)
+# Find new present value utility
+pvu_no_cc_theta = present_value(v_t = utility_no_cc_theta, r = discount_rate_cc, t = year)
+# Find present value for climate change ---
+# theta = 0 b/c no change in consumption
+change_consumption_cc = 1 - 0
+# Find new utility
+utility_cc_theta <-  society_utility(eta = 0.5, c_t = consumption_t_44*90)
+# Find new present value
+pvu_cc_theta = present_value(v_t = utility_cc_theta, r = discount_rate_cc, t = year)
+# Find max value of theta - find the minimum difference since they'll be more equal to each other
+theta_star = min(pvu_cc_theta - pvu_no_cc_theta)
+```
+
+**The value of $\theta$* that society would be willing to endure every year to prevent climate change is `r round(theta_star, 2)`.**
+
+### d) Considering Climate Uncertainty With Economic Consumption 
+
+As we discovered in part 2c, temperature produced the biggest impact on present value utility percentage loss. We wanted to test the uncertainty of economic consumption reduction ($\theta$*) in different BAU scenarios. We considered 3 BAU scenarios with the following probabilities:
+
+- T = 2 (with probability .2)
+- T = 4 (with probability .5)
+- T = 6 (with probability .3). 
+
+After fcalculating the economic consumption and present value utilities for each climate scenario, we factored in the corresponding probabilities and added these values together to find the total expected value. We then found the minimum input values of the expected value to determine $\theta$*
+
+```{r Find Theta with uncertainty, echo = FALSE}
+# Calculate utility for each of the three options ----
+# Find BAU temp
+temp_t_2_prob <- lapply(year, bau_temp, T = 2)
+temp_t_4_prob <- lapply(year, bau_temp, T = 4)
+temp_t_6_prob <- lapply(year, bau_temp, T = 6)
+# Turn lists into data frame
+temp_t_ev_df <- tibble(year, temp_t_2_prob, temp_t_4_prob, temp_t_6_prob)
+temp_t_ev_df$temp_t_2_prob = as.numeric(temp_t_ev_df$temp_t_2_prob)
+temp_t_ev_df$temp_t_4_prob = as.numeric(temp_t_ev_df$temp_t_4_prob)
+temp_t_ev_df$temp_t_6_prob = as.numeric(temp_t_ev_df$temp_t_6_prob)
+# Find consumption under expected value
+er_t_2_prob <- econ_activity_retained(beta = 0.05, tau = temp_t_ev_df$temp_t_2_prob)
+er_t_4_prob <- econ_activity_retained(beta = 0.05, tau = temp_t_ev_df$temp_t_4_prob)
+er_t_6_prob <- econ_activity_retained(beta = 0.05, tau = temp_t_ev_df$temp_t_6_prob)
+consumption_t_2_prob <- consumption(t = year, g = 0.01, k_t = er_t_2_prob)
+consumption_t_4_prob <- consumption(t = year, g = 0.01, k_t = er_t_4_prob)
+consumption_t_6_prob <- consumption(t = year, g = 0.01, k_t = er_t_6_prob)
+# Find undiscounted utility under expected value
+utility_t_2_prob <- society_utility(eta = 0.5, c_t = consumption_t_2_prob)
+utility_t_4_prob <- society_utility(eta = 0.5, c_t = consumption_t_4_prob)
+utility_t_6_prob <- society_utility(eta = 0.5, c_t = consumption_t_6_prob)
+# Find present value utility under expected value
+pvu_t_2_prob = present_value(v_t = utility_t_2_prob, r = discount_rate_cc, t = year)
+pvu_t_4_prob = present_value(v_t = utility_t_4_prob, r = discount_rate_cc, t = year)
+pvu_t_6_prob = present_value(v_t = utility_t_6_prob, r = discount_rate_cc, t = year)
+# Find expected value ----
+expected_value = pvu_t_2_prob*.2 + pvu_t_4_prob*.5 + pvu_t_6_prob*.3
+# Calculate theta ----
+# Find the minimum difference
+theta_star_ev = min(expected_value)
+
+
+```
+
+**The value of $\theta$* is `r round(theta_star_ev, 2)`.**
