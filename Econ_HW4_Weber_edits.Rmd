@@ -18,7 +18,7 @@ library(janitor)
 library(kableExtra)
 ```
 
-# **Building a Climate-Economy Model to Account For Risk and Uncertainty and Applying Sensitivity Analysis.**
+###  **Building a Climate-Economy Model to Account For Risk and Uncertainty and Applying Sensitivity Analysis.**
 
 ### Task 1 - Plots
 
@@ -300,7 +300,7 @@ present_value_utility_df <- data.frame(year, present_value_utility_cc, present_v
 
 ```
 
-As our model shows, by year 200, present value reduces from  \$`r round(present_value_utility_df$pv_cc[1], 2)` to \$`r round(present_value_utility_df$pv_cc[201], 2)` with climate change, and reduces from  \$`r round(present_value_utility_df$pv_no_cc[1], 2)` to \$`r round(present_value_utility_df$pv_no_cc[201], 2)` without climate change. The total percentage loss in present value utility by year 200 is `r round( present_value_utility_df$pct_loss[101], 2)`%.
+Our model showed that by year 200, present value reduces from  \$`r round(present_value_utility_df$pv_cc[1], 2)` to \$`r round(present_value_utility_df$pv_cc[201], 2)` with climate change, and reduces from  \$`r round(present_value_utility_df$pv_no_cc[1], 2)` to \$`r round(present_value_utility_df$pv_no_cc[201], 2)` without climate change. The total percentage loss in present value utility by year 200 is `r round( present_value_utility_df$pct_loss[101], 2)`%.
 
 ```{r results = "asis", fig.width= 12, echo = FALSE}
 # # Create table
@@ -327,6 +327,7 @@ beta_increase = .05 + .05*.10
 ```
 
 ### b) Sensitivity Analysis of Present Value Utility Percentage Loss
+
 Next we wanted to test how utility may be sensitive to a number of variables in this climate change model. To test the sensitivity of values of present value utility percentage loss (L), we considered variables: temperature (T), g, $\eta$ and $\beta$ and then calculated the percent change in L that arises from a 10% increase in each:
 
  - T = 4.4 -> `r t_increase`
@@ -464,7 +465,7 @@ As we discovered in part 2c, temperature produced the biggest impact on present 
 - T = 4 (with probability .5)
 - T = 6 (with probability .3). 
 
-After fcalculating the economic consumption and present value utilities for each climate scenario, we factored in the corresponding probabilities and added these values together to find the total expected value. We then found the minimum input values of the expected value to determine $\theta$*
+After calculating the economic consumption and present value utilities for each climate scenario, we factored in the corresponding probabilities and added these values together to find the total expected value. We then found the minimum input values of the expected value to determine $\theta$*
 
 ```{r Find Theta with uncertainty, echo = FALSE}
 # Calculate utility for each of the three options ----
